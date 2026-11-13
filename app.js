@@ -134,7 +134,23 @@ function finish(){
     items:z.items.map(x => ({q:x.q, opts:x.opts.map(o=>o.t), ans:x.opts.findIndex(o=>o.ok), sel:x.sel, why:x.why})) };
   const a = load(); a.unshift(rec); save(a);
   clearInterval(state.timer); state.quiz = null;
-  state.review = rec; state.view = 'result'; render();
+  state.review = rec; state.view = 'result'; render(); report(rec);
+}
+
+/* send the score to the Google Form (if set up) */
+function report(r){
+  const C = window.DEVU_CONFIG || {}; if(!C.formUrl) return;
+  const wrong = r.items.map((x,i)=>x.sel===x.ans?null:(i+1)+'. '+x.q).filter(Boolean).join(' | ');
+  const v = {day:r.day, topic:r.topic, score:r.score, total:r.total, percent:Math.round(100*r.score/r.total), mins:(r.secs/60).toFixed(1), wrong};
+  const body = new URLSearchParams();
+  Object.keys(C.fields).forEach(k => { if(C.fields[k]) body.append(C.fields[k], v[k]); });
+  try{ fetch(C.formUrl,{method:'POST',mode:'no-cors',body}); }catch(e){}
+}
+function waLink(r){
+  const C = window.DEVU_CONFIG || {}; if(!C.whatsapp) return '';
+  const p = Math.round(100*r.score/r.total);
+  const t = 'Devu here! '+r.topic+' quiz: '+r.score+'/'+r.total+' ('+p+'%) in '+fmtT(r.secs)+' ♥';
+  return 'https://wa.me/'+C.whatsapp+'?text='+encodeURIComponent(t);
 }
 
 function reviewList(rec){
@@ -158,7 +174,7 @@ function result(){
     <div class="ring" style="--p:${p}"><div><span>${r.score}/${r.total}<small>${p}%</small></span></div></div>
     <div class="big">${g[1]}</div><p>${g[2]}</p>
     <p class="meta">Finished in ${fmtT(r.secs)}. Saved in My results.</p>
-    <div class="acts"><button class="btn" data-start="${r.day}">Try again, new order</button><button class="btn alt" data-go="home">Home</button><button class="btn alt" data-go="history">My results</button></div>
+    <div class="acts"><button class="btn" data-start="${r.day}">Try again, new order</button><button class="btn alt" data-go="home">Home</button><button class="btn alt" data-go="history">My results</button>${waLink(r)?`<a class="btn alt" style="text-decoration:none" href="${waLink(r)}" target="_blank" rel="noopener">Tell Asloottan</a>`:''}</div>
   </section>
   <h2 class="sec">Let's look at every answer</h2>${reviewList(r)}`;
   window.scrollTo(0,0);
