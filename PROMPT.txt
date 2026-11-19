@@ -1,0 +1,4 @@
+Here are my girlfriend's notes for today (topic: ____ , date: YYYY-MM-DD). Make 25-30 MCQs for CS Executive Tax/law
+exam practice, only from facts clearly in the notes, plus 4-5 small numerical examples. Reply ONLY with a file in this format:
+DEVU_DAYS.push({date:"YYYY-MM-DD", topic:"...", questions:[{q:"...", a:"correct", w:["wrong1","wrong2","wrong3"], why:"short reason"}]});
+Correct answer always in "a", exactly 3 wrong answers in "w", plausible wrong answers, and a one-line "why" for each.

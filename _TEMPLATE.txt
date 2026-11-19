@@ -1,0 +1,12 @@
+Copy this to a new file named with the date, e.g. days/2026-11-07.js
+
+DEVU_DAYS.push({
+date: "2026-11-07",
+topic: "Topic name",
+questions: [
+{q:"Question?", a:"Correct answer", w:["Wrong 1","Wrong 2","Wrong 3"], why:"Short reason why the answer is right."},
+{q:"Next question?", a:"Correct answer", w:["Wrong 1","Wrong 2","Wrong 3"], why:"Reason."}
+]});
+
+Rules: the file name and the date must match. The correct answer is always written in "a"
+(the site shuffles the order for her). Exactly 3 wrong answers in "w".

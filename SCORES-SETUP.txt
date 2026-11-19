@@ -1,0 +1,13 @@
+SEE DEVU'S SCORES (free, about 10 minutes, once)
+1. Go to forms.google.com with YOUR Google account > Blank form. Title: Devu scores.
+2. Add 7 "Short answer" questions, named exactly: day, topic, score, total, percent, mins, wrong
+   (make "wrong" a Paragraph question). None required.
+3. Responses tab > click the green Sheets icon "Link to Sheets". That sheet is your admin page: every attempt appears as a row.
+   Only you can see it.
+4. Click the 3-dot menu (top right) > "Get pre-filled link". Type any text in every box, click Get link, copy it.
+   It looks like https://docs.google.com/forms/d/e/LONGID/viewform?usp=pp_url&entry.111=...&entry.222=...
+5. Send that link to Claude and I will fill config.js for you. (Or do it yourself: formUrl = the link up to LONGID
+   then /formResponse; each "entry.NNN" goes into fields in the same order as the questions.)
+6. Re-upload config.js to GitHub. From then on every finished quiz is sent automatically.
+
+Optional: put your WhatsApp number in config.js (whatsapp: "91XXXXXXXXXX") and she gets a "Tell Asloottan" button after each quiz.
