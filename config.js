@@ -1,8 +1,6 @@
-/* Optional settings. Leave empty until you set them up (see SCORES-SETUP.txt). */
+/* Settings for score tracking. */
 window.DEVU_CONFIG = {
-  // Google Form that collects her scores into a Google Sheet that only you can open
-  formUrl: "",   // e.g. "https://docs.google.com/forms/d/e/XXXX/formResponse"
-  fields: { day:"", topic:"", score:"", total:"", percent:"", mins:"", wrong:"" },  // e.g. "entry.123456789"
-  // Your WhatsApp number with country code, no + or spaces (shows a "Send to Asloottan" button). e.g. "919XXXXXXXXX"
-  whatsapp: ""
+  formUrl: "https://docs.google.com/forms/d/e/1FAIpQLSdQzYxSHN_DQXyQHJjitW9NkyGm_YMKLThAw2syKYIqbVBxZg/formResponse",
+  fields: { day:"entry.554501576", topic:"entry.1879219773", score:"entry.204739612", total:"entry.656603949", percent:"entry.1907036550", mins:"entry.700773288", wrong:"entry.765289496" },
+  whatsapp: "919207801456"
 };

@@ -23,6 +23,17 @@ main{flex:1;padding:20px 0 40px}
 .float i{position:absolute;bottom:-40px;color:var(--rose);opacity:.16;font-style:normal;animation:rise linear infinite}
 @keyframes rise{to{transform:translateY(-110vh) rotate(25deg)}}
 header,main,footer{position:relative;z-index:1}
+/* answer feedback */
+.opt.right{background:var(--mintbg);border-color:var(--mint)}
+.opt.right .l{background:var(--mint);border-color:var(--mint);color:#fff}
+.opt.wrong{background:var(--oopsbg);border-color:var(--oops)}
+.opt.wrong .l{background:var(--oops);border-color:var(--oops);color:#fff}
+.opt[disabled]{cursor:default}
+.opt .tag{margin-left:auto;font-weight:700;font-size:15px;white-space:nowrap;padding-left:8px}
+.nudge{margin-top:12px;background:#FFF6B8;border-radius:14px;padding:8px 14px}
+.prep{text-align:center}
+.prep .qtext{text-align:left}
+.prep .opt{text-align:left}
 
 /* top bar */
 .top{display:flex;align-items:center;justify-content:space-between;padding:14px 0}
