@@ -38,7 +38,8 @@ const GRADES = [
 const grade = p => GRADES.find(g => p >= g[0]);
 
 /* ---------- state ---------- */
-let state = { view:'home', quiz:null, review:null, timer:null };
+let state = { view:'home', quiz:null, review:null, timer:null, prep:null };
+const keyOf = d => d.date+'|'+d.topic;
 
 /* ---------- discovery of day files ---------- */
 function discover(){
@@ -49,7 +50,7 @@ function discover(){
       s.src = 'days/'+iso(d)+'.js'; s.onload = s.onerror = () => res(); document.head.appendChild(s);
     }));
   }
-  return Promise.all(tasks).then(() => { DEVU_DAYS.sort((a,b)=>a.date<b.date?1:-1); });
+  return Promise.all(tasks).then(() => { DEVU_DAYS.sort((a,b)=>a.date<b.date?1:(a.date>b.date?-1:0)); });
 }
 
 /* ---------- stats ---------- */
@@ -66,14 +67,14 @@ function home(){
   const best = att.length ? Math.max(...att.map(a => Math.round(100*a.score/a.total))) : 0;
   const st = streak(att);
   const cards = DEVU_DAYS.map(d => {
-    const mine = att.filter(a => a.day===d.date);
+    const mine = att.filter(a => a.day===d.date && a.topic===d.topic);
     const b = mine.length ? Math.max(...mine.map(a => Math.round(100*a.score/a.total))) : null;
     const dt = new Date(d.date+'T00:00:00');
     return `<div class="day">
       <div class="dbadge"><b>${dt.getDate()}</b><span>${dt.toLocaleDateString('en-IN',{month:'short'})}</span></div>
       <div><h3>${esc(d.topic)}</h3><div class="meta">${fmtDay(d.date)} · ${d.questions.length} questions · tried ${mine.length}×</div>
       ${b!==null?`<span class="best">Best: ${b}%</span>`:''}</div>
-      <button class="btn" data-start="${d.date}">${mine.length?'Try again':'Start'}</button></div>`;
+      <button class="btn" data-start="${esc(keyOf(d))}">${mine.length?'Try again':'Start'}</button></div>`;
   }).join('');
   const nth = Math.floor(Date.now()/864e5) % HELLO.length;
   $app.innerHTML = `
@@ -91,13 +92,31 @@ function home(){
   <div class="days">${cards || `<div class="empty"><h3>No quizzes yet</h3><p>Add a file for today in the <b>days</b> folder and it will show up here.</p></div>`}</div>`;
 }
 
-function startQuiz(date){
-  const d = DEVU_DAYS.find(x => x.date===date); if(!d) return;
+function startQuiz(key){
+  const d = DEVU_DAYS.find(x => keyOf(x)===key); if(!d) return;
+  state.prep = d; state.view = 'prep'; render();
+}
+function prep(){
+  const d = state.prep;
+  $app.innerHTML = `<section class="prep">
+    <div class="big">Ready, Devu?</div>
+    <h2>${esc(d.topic)}</h2><p class="meta">${d.questions.length} questions, shuffled every time</p>
+    <div class="qcard" style="margin-top:18px">
+      <div class="qtext">Do you want to see the right answer after each question?</div>
+      <div class="opts">
+        <button class="opt" data-begin="1"><span class="l">✓</span><span><b>Yes, show me each answer</b><br>When you press Next, I show the right answer and why. Then you move on.</span></button>
+        <button class="opt" data-begin="0"><span class="l">…</span><span><b>No, test me like the real exam</b><br>Answer everything first. You see all the answers at the end.</span></button>
+      </div>
+    </div>
+    <div class="acts"><button class="btn alt" data-go="home">Back</button></div></section>`;
+}
+function beginQuiz(show){
+  const d = state.prep; if(!d) return;
   const items = shuffle(d.questions).map(q => {
     const opts = shuffle([{t:q.a,ok:true}, ...q.w.map(t => ({t,ok:false}))]);
-    return { q:q.q, opts, sel:null, why:q.why||'' };
+    return { q:q.q, opts, sel:null, why:q.why||'', checked:false };
   });
-  state.quiz = { day:d, items, i:0, t0:Date.now() };
+  state.quiz = { day:d, items, i:0, t0:Date.now(), show:!!show, nudge:false };
   state.view = 'quiz';
   clearInterval(state.timer);
   state.timer = setInterval(() => { const t=document.getElementById('tm'); if(t&&state.quiz) t.textContent = '⏱ '+fmtT(Math.floor((Date.now()-state.quiz.t0)/1000)); }, 1000);
@@ -114,16 +133,32 @@ function quiz(){
   <div class="qcard">
     <div class="qno">Question ${z.i+1} of ${n}</div>
     <div class="qtext">${esc(it.q)}</div>
-    <div class="opts">${it.opts.map((o,k) => `<button class="opt ${it.sel===k?'sel':''}" data-opt="${k}"><span class="l">${L[k]}</span><span>${esc(o.t)}</span></button>`).join('')}</div>
+    <div class="opts">${it.opts.map((o,k) => {
+      let cls = it.sel===k?'sel':'';
+      if(it.checked){ cls = o.ok?'right':(it.sel===k?'wrong':''); }
+      const tag = it.checked ? (o.ok?(it.sel===k?'Your answer ✓':'Correct answer'):(it.sel===k?'Your answer':'')) : '';
+      return `<button class="opt ${cls}" data-opt="${k}" ${it.checked?'disabled':''}><span class="l">${L[k]}</span><span>${esc(o.t)}</span>${tag?`<span class="tag">${tag}</span>`:''}</button>`;
+    }).join('')}</div>
+    ${it.checked?`<div class="why"><b>${it.sel===null?'Not answered':(it.opts[it.sel].ok?'Correct! ':'Not quite. ')}</b>${it.why?esc(it.why):''}</div>`:''}
+    ${z.nudge?`<div class="nudge">Pick an answer first, Devu. Take a guess, it is how you learn.</div>`:''}
     <div class="qnav">
       <button class="btn alt" data-prev ${z.i===0?'disabled':''}>Back</button>
-      ${last?`<button class="btn" data-finish>Finish quiz</button>`:`<button class="btn" data-next>Next</button>`}
+      <button class="btn" data-${last?'finish':'next'}>${last?(z.show&&!it.checked?'Check answer':'Finish quiz'):(z.show&&it.checked?'Continue':'Next')}</button>
     </div>
     <div class="pal">${z.items.map((x,k)=>`<button class="${k===z.i?'cur':x.sel!==null?'done':''}" data-jump="${k}" aria-label="Go to question ${k+1}">${k+1}</button>`).join('')}</div>
   </div>
   <p class="cheer">${answered} of ${n} answered. ${answered===n?'All done, press Finish when you are ready.':'Take your time, Devu. You know more than you think.'}</p>`;
 }
 
+function advance(kind){
+  const z = state.quiz, it = z.items[z.i];
+  z.nudge = false;
+  if(z.show && !it.checked){
+    if(it.sel===null){ z.nudge = true; render(); return; }
+    it.checked = true; render(); return;
+  }
+  if(kind==='finish') finish(); else { z.i++; render(); }
+}
 function finish(){
   const z = state.quiz, n = z.items.length;
   const unanswered = z.items.filter(x => x.sel===null).length;
@@ -137,14 +172,20 @@ function finish(){
   state.review = rec; state.view = 'result'; render(); report(rec);
 }
 
-/* send the score to the Google Form (if set up) */
+/* send the score to the Google Form (if set up), through a hidden form so it works from any page */
 function report(r){
   const C = window.DEVU_CONFIG || {}; if(!C.formUrl) return;
-  const wrong = r.items.map((x,i)=>x.sel===x.ans?null:(i+1)+'. '+x.q).filter(Boolean).join(' | ');
-  const v = {day:r.day, topic:r.topic, score:r.score, total:r.total, percent:Math.round(100*r.score/r.total), mins:(r.secs/60).toFixed(1), wrong};
-  const body = new URLSearchParams();
-  Object.keys(C.fields).forEach(k => { if(C.fields[k]) body.append(C.fields[k], v[k]); });
-  try{ fetch(C.formUrl,{method:'POST',mode:'no-cors',body}); }catch(e){}
+  let wrong = r.items.map((x,i)=>x.sel===x.ans?null:(i+1)+'. '+x.q).filter(Boolean).join(' | ');
+  if(wrong.length>900) wrong = wrong.slice(0,900)+' ...';
+  const v = {day:r.day, topic:r.topic, score:r.score, total:r.total, percent:Math.round(100*r.score/r.total), mins:(r.secs/60).toFixed(1), wrong:wrong||'none'};
+  try{
+    let fr = document.getElementById('dq-sink');
+    if(!fr){ fr = document.createElement('iframe'); fr.name = fr.id = 'dq-sink'; fr.style.display = 'none'; document.body.appendChild(fr); }
+    const f = document.createElement('form');
+    f.method = 'POST'; f.action = C.formUrl; f.target = 'dq-sink'; f.style.display = 'none';
+    Object.keys(C.fields).forEach(k => { if(!C.fields[k]) return; const i = document.createElement('input'); i.type = 'hidden'; i.name = C.fields[k]; i.value = String(v[k]); f.appendChild(i); });
+    document.body.appendChild(f); f.submit(); setTimeout(() => f.remove(), 3000);
+  }catch(e){}
 }
 function waLink(r){
   const C = window.DEVU_CONFIG || {}; if(!C.whatsapp) return '';
@@ -174,7 +215,7 @@ function result(){
     <div class="ring" style="--p:${p}"><div><span>${r.score}/${r.total}<small>${p}%</small></span></div></div>
     <div class="big">${g[1]}</div><p>${g[2]}</p>
     <p class="meta">Finished in ${fmtT(r.secs)}. Saved in My results.</p>
-    <div class="acts"><button class="btn" data-start="${r.day}">Try again, new order</button><button class="btn alt" data-go="home">Home</button><button class="btn alt" data-go="history">My results</button>${waLink(r)?`<a class="btn alt" style="text-decoration:none" href="${waLink(r)}" target="_blank" rel="noopener">Tell Asloottan</a>`:''}</div>
+    <div class="acts"><button class="btn" data-start="${esc(r.day+'|'+r.topic)}">Try again, new order</button><button class="btn alt" data-go="home">Home</button><button class="btn alt" data-go="history">My results</button>${waLink(r)?`<a class="btn alt" style="text-decoration:none" href="${waLink(r)}" target="_blank" rel="noopener">Tell Asloottan</a>`:''}</div>
   </section>
   <h2 class="sec">Let's look at every answer</h2>${reviewList(r)}`;
   window.scrollTo(0,0);
@@ -199,7 +240,7 @@ function reviewView(){
 }
 
 function render(){
-  ({home, quiz, result, history, review:reviewView})[state.view]();
+  ({home, prep, quiz, result, history, review:reviewView})[state.view]();
 }
 
 /* ---------- events ---------- */
@@ -209,11 +250,12 @@ document.addEventListener('click', e => {
   if(D.go){ if(z && !confirm('Leave this quiz? Your answers will not be saved.')) return;
     clearInterval(state.timer); state.quiz=null; state.view=D.go; render(); window.scrollTo(0,0); }
   else if(D.start){ startQuiz(D.start); window.scrollTo(0,0); }
-  else if(D.opt!==undefined){ z.items[z.i].sel = +D.opt; render(); }
-  else if(D.next!==undefined){ z.i++; render(); }
-  else if(D.prev!==undefined){ z.i--; render(); }
-  else if(D.jump!==undefined){ z.i = +D.jump; render(); }
-  else if(D.finish!==undefined){ finish(); }
+  else if(D.begin!==undefined){ beginQuiz(D.begin==='1'); window.scrollTo(0,0); }
+  else if(D.opt!==undefined){ if(!z.items[z.i].checked){ z.items[z.i].sel = +D.opt; z.nudge=false; render(); } }
+  else if(D.next!==undefined){ advance('next'); }
+  else if(D.prev!==undefined){ z.i--; z.nudge=false; render(); }
+  else if(D.jump!==undefined){ z.i = +D.jump; z.nudge=false; render(); }
+  else if(D.finish!==undefined){ advance('finish'); }
   else if(D.open){ state.review = load().find(r => String(r.id)===D.open); state.view='review'; render(); }
   else if(D.export!==undefined){
     const b = new Blob([JSON.stringify(load())],{type:'application/json'}), u = URL.createObjectURL(b), a = document.createElement('a');
